@@ -1,0 +1,2038 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Spasial 3D Sawit Nasional - Sekretariat Satgas Sawit Bappenas</title>
+
+  <!-- MapLibre GL JS CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" />
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+
+  <!-- Turf.js untuk Geoprocessing Spasial -->
+  <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: #f4efe6;
+      color: #1c1917;
+      position: relative;
+    }
+
+    /* Backdrop Ambient Warm Ivory */
+    .ocean-feather-backdrop {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+      background: radial-gradient(circle at 50% 50%, #fbf9f4 0%, #ece5d8 100%);
+    }
+
+    #map {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      background: transparent !important;
+    }
+
+    /* ========================================================
+       NARASI EDITORIAL STORYTELLING AWAL (BORDERLESS)
+       ======================================================== */
+    .narrative-editorial-left {
+      position: absolute;
+      top: 32px;
+      left: 40px;
+      z-index: 15;
+      width: 430px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      text-align: left;
+      pointer-events: none;
+      transition: opacity 0.35s ease, transform 0.35s ease;
+      text-shadow: 0 1px 4px rgba(255, 255, 255, 0.9);
+    }
+    .narrative-editorial-left.hidden {
+      opacity: 0;
+      transform: translateX(-40px);
+    }
+    .panel-kicker {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #2d6a4f;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .panel-kicker::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      background: #2d6a4f;
+      border-radius: 50%;
+      box-shadow: 0 0 8px rgba(45, 106, 79, 0.6);
+    }
+    .narrative-editorial-left h1 {
+      font-size: 32px;
+      font-weight: 900;
+      color: #1c1917;
+      line-height: 1.15;
+      letter-spacing: -0.6px;
+      margin-bottom: 12px;
+    }
+    .narrative-lead {
+      font-size: 13.5px;
+      color: #44403c;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .stat-row-capsule {
+      display: flex;
+      gap: 20px;
+      padding: 12px 0;
+      border-top: 1.5px solid rgba(45, 106, 79, 0.25);
+      border-bottom: 1.5px solid rgba(45, 106, 79, 0.25);
+      width: 100%;
+      margin-bottom: 16px;
+    }
+    .b-stat {
+      display: flex;
+      flex-direction: column;
+    }
+    .b-stat .num {
+      font-size: 20px;
+      font-weight: 900;
+      color: #2d6a4f;
+      letter-spacing: -0.5px;
+    }
+    .b-stat .lbl {
+      font-size: 9.5px;
+      color: #78716c;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 2px;
+    }
+
+    .editorial-note {
+      font-size: 12px;
+      color: #44403c;
+      line-height: 1.6;
+      border-left: 3.5px solid #2d6a4f;
+      padding-left: 12px;
+      margin-bottom: 14px;
+    }
+
+    /* STORYTELLING KANAN AWAL */
+    .magazine-story-right {
+      position: absolute;
+      top: 80px;
+      right: 40px;
+      width: 410px;
+      z-index: 15;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      text-align: right;
+      pointer-events: none;
+      transition: opacity 0.35s ease, transform 0.35s ease;
+      text-shadow: 0 1px 4px rgba(255, 255, 255, 0.9);
+    }
+    .magazine-story-right.hidden {
+      opacity: 0;
+      transform: translateX(40px);
+    }
+    .mag-tag {
+      font-size: 10.5px;
+      letter-spacing: 2px;
+      font-weight: 800;
+      color: #8c532b;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .mag-title {
+      font-size: 28px;
+      font-weight: 900;
+      line-height: 1.15;
+      color: #1c1917;
+      margin-bottom: 12px;
+    }
+    .mag-quote {
+      font-size: 13.5px;
+      font-style: italic;
+      line-height: 1.6;
+      color: #2d6a4f;
+      border-right: 3.5px solid #8c532b;
+      padding-right: 14px;
+      margin-bottom: 12px;
+    }
+    .mag-body {
+      font-size: 12px;
+      line-height: 1.65;
+      color: #44403c;
+      margin-bottom: 14px;
+    }
+    .mag-meta {
+      font-family: monospace;
+      font-size: 10px;
+      color: #78716c;
+      border-top: 1px dashed rgba(45, 106, 79, 0.3);
+      padding-top: 8px;
+      width: 100%;
+      text-align: right;
+    }
+
+    /* ========================================================
+       TOP CENTER CLUSTER (DAPAT HILANG SAAT POLIGON DIKLIK)
+       ======================================================== */
+    .top-center-cluster {
+      position: absolute;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    .top-center-cluster.hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, -20px);
+    }
+
+    .mode-switch-group {
+      display: flex;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(214, 207, 196, 0.8);
+      border-radius: 30px;
+      padding: 4px;
+      box-shadow: 0 6px 20px rgba(28, 25, 23, 0.06);
+      gap: 4px;
+    }
+
+    .btn-home {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: #57534e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 14px;
+    }
+    .btn-home:hover {
+      background: rgba(244, 239, 230, 0.8);
+      color: #1c1917;
+    }
+    .btn-home.active {
+      background: #1c1917;
+      color: #ffffff;
+    }
+
+    .mode-btn {
+      border: none;
+      background: transparent;
+      padding: 6px 18px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #57534e;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      letter-spacing: 0.5px;
+    }
+    .mode-btn.active {
+      background: #2d6a4f;
+      color: #ffffff;
+      box-shadow: 0 2px 10px rgba(45, 106, 79, 0.35);
+    }
+
+    .market-ticker-bar {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(231, 226, 216, 0.8);
+      border-radius: 20px;
+      padding: 4px 16px;
+      font-size: 11px;
+      color: #44403c;
+      box-shadow: 0 4px 12px rgba(28, 25, 23, 0.04);
+    }
+    .ticker-item {
+      display: flex;
+      gap: 6px;
+    }
+    .ticker-item strong { color: #8c532b; }
+
+    /* ========================================================
+       KONTROL NAVIGASI & BILINGUAL SWITCHER
+       ======================================================== */
+    .map-custom-controls {
+      position: absolute;
+      top: 24px;
+      right: 40px;
+      z-index: 25;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+    }
+    .ctrl-btn {
+      width: 36px;
+      height: 36px;
+      background: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(214, 207, 196, 0.8);
+      border-radius: 8px;
+      color: #1c1917;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      transition: all 0.2s ease;
+      box-shadow: 0 3px 10px rgba(28, 25, 23, 0.05);
+    }
+    .ctrl-btn:hover {
+      background: #2d6a4f;
+      color: #ffffff;
+      border-color: #2d6a4f;
+    }
+
+    .lang-switcher-wrap {
+      display: flex;
+      background: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(214, 207, 196, 0.8);
+      border-radius: 20px;
+      padding: 3px;
+      box-shadow: 0 3px 10px rgba(28, 25, 23, 0.05);
+    }
+    .lang-toggle-btn {
+      border: none;
+      background: transparent;
+      padding: 4px 10px;
+      border-radius: 14px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #78716c;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .lang-toggle-btn.active {
+      background: #1c1917;
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(28, 25, 23, 0.2);
+    }
+
+    /* ========================================================
+       LEGENDA DI KIRI BAWAH (UNTUK MODE AREAL & TBS)
+       ======================================================== */
+    .map-legend-bottom-left {
+      position: absolute;
+      bottom: 28px;
+      left: 40px;
+      z-index: 25;
+      background: rgba(255, 255, 255, 0.78);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(214, 207, 196, 0.8);
+      border-radius: 12px;
+      padding: 10px 14px;
+      box-shadow: 0 4px 15px rgba(28, 25, 23, 0.06);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      pointer-events: auto;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    .map-legend-bottom-left.hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(20px);
+    }
+    .legend-title {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #2d6a4f;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .legend-title::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      background: #2d6a4f;
+      border-radius: 50%;
+    }
+    .legend-items-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .legend-item-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: #44403c;
+      font-weight: 600;
+    }
+    .legend-swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      flex-shrink: 0;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    /* ========================================================
+       PANEL DETAIL KIRI (FROSTED GLASS)
+       ======================================================== */
+    .sidebar-panel-left {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      bottom: 24px;
+      width: 440px;
+      z-index: 100;
+      background: rgba(252, 250, 246, 0.78);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-radius: 14px;
+      border: 1px solid rgba(214, 207, 196, 0.7);
+      box-shadow: 10px 20px 45px rgba(28, 25, 23, 0.08);
+      display: flex;
+      flex-direction: column;
+      transform: translateX(-490px);
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
+    }
+    .sidebar-panel-left.open {
+      transform: translateX(0);
+    }
+
+    .sidebar-header {
+      padding: 18px 22px 14px;
+      border-bottom: 1px solid rgba(231, 226, 216, 0.7);
+      background: rgba(244, 239, 230, 0.65);
+    }
+    .sidebar-header .top-tag-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .sidebar-header span.tag {
+      font-size: 10.5px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      color: #2d6a4f;
+      text-transform: uppercase;
+    }
+    .close-btn {
+      width: 28px;
+      height: 28px;
+      background: rgba(28, 25, 23, 0.05);
+      border: 1px solid rgba(214, 207, 196, 0.8);
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #44403c;
+      font-weight: bold;
+    }
+    .close-btn:hover { background: #b91c1c; border-color: #b91c1c; color:#fff; }
+
+    .sidebar-header h2 {
+      font-size: 22px;
+      font-weight: 900;
+      color: #1c1917;
+      letter-spacing: -0.5px;
+    }
+    .sidebar-header p.sub {
+      font-size: 11.5px;
+      color: #57534e;
+      margin-top: 2px;
+    }
+
+    .scroll-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .scroll-body::-webkit-scrollbar { width: 4px; }
+    .scroll-body::-webkit-scrollbar-thumb { background: rgba(214, 207, 196, 0.8); border-radius: 4px; }
+
+    .metric-card {
+      background: rgba(255, 255, 255, 0.65);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(231, 226, 216, 0.7);
+      border-radius: 10px;
+      padding: 14px;
+      box-shadow: 0 2px 8px rgba(28, 25, 23, 0.03);
+    }
+    .metric-card-title {
+      font-size: 11px;
+      font-weight: 800;
+      color: #2d6a4f;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .metric-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .m-item .lbl {
+      font-size: 9.5px;
+      color: #78716c;
+      text-transform: uppercase;
+      font-weight: 700;
+      display: block;
+    }
+    .m-item .val {
+      font-size: 14px;
+      font-weight: 800;
+      color: #1c1917;
+    }
+
+    .item-interactive-card {
+      background: rgba(255, 255, 255, 0.65);
+      backdrop-filter: blur(8px);
+      border: 1.5px solid rgba(231, 226, 216, 0.8);
+      border-radius: 8px;
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .item-interactive-card:hover, .item-interactive-card.glowing {
+      border-color: #f59e0b !important;
+      background: rgba(254, 243, 199, 0.75) !important;
+      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.25);
+      transform: translateX(4px);
+    }
+
+    /* ========================================================
+       KARTU-KARTU MELAYANG DI SISI KANAN (FROSTED GLASS)
+       ======================================================== */
+    .floating-cards-container {
+      position: absolute;
+      top: 80px;
+      right: 28px;
+      bottom: 28px;
+      width: 440px;
+      z-index: 105;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateX(30px);
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .floating-cards-container.open {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    .floating-cards-container::-webkit-scrollbar { width: 4px; }
+    .floating-cards-container::-webkit-scrollbar-thumb { background: rgba(214, 207, 196, 0.8); border-radius: 4px; }
+
+    .floating-widget-card {
+      pointer-events: auto;
+      background: rgba(255, 255, 255, 0.78);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(214, 207, 196, 0.8);
+      border-radius: 12px;
+      padding: 14px 16px;
+      box-shadow: 0 10px 30px rgba(28, 25, 23, 0.08);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .floating-widget-card:hover {
+      box-shadow: 0 14px 35px rgba(28, 25, 23, 0.12);
+    }
+
+    .floating-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid rgba(231, 226, 216, 0.7);
+    }
+    .floating-card-header .kicker {
+      font-size: 10px;
+      font-weight: 800;
+      color: #2d6a4f;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+    .floating-card-close {
+      background: none;
+      border: none;
+      font-size: 14px;
+      color: #78716c;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .floating-card-close:hover {
+      background: rgba(0, 0, 0, 0.05);
+      color: #0f172a;
+    }
+
+    .btn-macro-action {
+      width: 100%;
+      padding: 12px;
+      color: #ffffff;
+      font-weight: 800;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      transition: all 0.2s ease;
+      margin: 4px 0 6px 0;
+    }
+    .btn-macro-action:hover {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+
+    /* ========================================================
+       NARASI STORYTELLING KANAN BAWAH (RATA KANAN & TANPA CARD)
+       ======================================================== */
+    .bottom-storytelling-narrative {
+      position: absolute;
+      bottom: 28px;
+      right: 40px;
+      z-index: 90;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      text-align: right;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.35s ease, transform 0.35s ease;
+      text-shadow: 0 1px 3px rgba(255, 255, 255, 0.95);
+    }
+    .bottom-storytelling-narrative.open {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .bottom-story-kicker {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #2d6a4f;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .bottom-story-kicker::after {
+      content: "";
+      width: 6px;
+      height: 6px;
+      background: #f59e0b;
+      border-radius: 50%;
+    }
+    .bottom-story-text {
+      font-size: 13px;
+      color: #292524;
+      line-height: 1.6;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="ocean-feather-backdrop"></div>
+
+  <!-- SISI KIRI: EDITORIAL AWAL -->
+  <div class="narrative-editorial-left" id="editorial-left">
+    <div class="panel-kicker" id="txt-left-kicker">Satgas Sawit Nasional • Bappenas</div>
+    <h1 id="txt-left-title">Tata Kelola & Neraca<br>Kelapa Sawit RI</h1>
+    
+    <p class="narrative-lead" id="txt-left-lead">
+      Komoditas strategis nasional dalam angka dan fakta. Menghubungkan bentang tutupan kebun 16,83 juta hektar, serapan domestik mandiri energi, hingga penetapan harga tandan buah segar (TBS) plasma di tingkat tapak.
+    </p>
+
+    <div class="stat-row-capsule">
+      <div class="b-stat">
+        <span class="num">16,83 Jt</span>
+        <span class="lbl" id="txt-stat-area">Hektar Kebun (2024)</span>
+      </div>
+      <div class="b-stat">
+        <span class="num">56,55 Jt</span>
+        <span class="lbl" id="txt-stat-prod">Ton Minyak Sawit (2025)</span>
+      </div>
+      <div class="b-stat">
+        <span class="num">US$ 29,0 M</span>
+        <span class="lbl" id="txt-stat-export">Devisa Ekspor HS 1511</span>
+      </div>
+    </div>
+
+    <div class="editorial-note" id="txt-left-note">
+      Elevasi balok 3D dan panel analisis otomatis bertransisi mengikuti tombol filter yang aktif di atas: <strong>Luas Areal (Agraria)</strong> atau <strong>TBS Plasma (Tata Niaga)</strong>.
+    </div>
+  </div>
+
+  <!-- CLUSTER ATAS TENGAH -->
+  <div class="top-center-cluster" id="top-center-cluster">
+    <div class="mode-switch-group">
+      <button class="btn-home active" id="btn-mode-home" onclick="setVisualMode('home')" title="Peta Dasar 2D (Home)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+      </button>
+
+      <button class="mode-btn" id="btn-mode-areal" onclick="setVisualMode('areal')">Visual Luas Areal (Ha)</button>
+      <button class="mode-btn" id="btn-mode-tbs" onclick="setVisualMode('tbs')">Penetapan TBS Plasma (Rp/Kg)</button>
+    </div>
+
+    <div class="market-ticker-bar">
+      <div class="ticker-item"><span>Rotterdam CIF:</span> <strong>$1.555,00</strong></div>
+      <span>•</span>
+      <div class="ticker-item"><span>BMD Malaysia:</span> <strong>$1.116,34</strong></div>
+      <span>•</span>
+      <div class="ticker-item"><span>ICDX RI:</span> <strong>$895,45</strong></div>
+      <span>•</span>
+      <div class="ticker-item"><span>KPBN Dumai:</span> <strong>$859,38</strong></div>
+    </div>
+  </div>
+
+  <!-- KONTROL NAVIGASI & TOMBOL BILINGUAL DI KANAN ATAS -->
+  <div class="map-custom-controls">
+    <button class="ctrl-btn" onclick="map.zoomIn()" title="Perbesar">＋</button>
+    <button class="ctrl-btn" onclick="map.zoomOut()" title="Perkecil">－</button>
+    <button class="ctrl-btn" onclick="resetView()" title="Reset Tampilan">↺</button>
+    
+    <div class="lang-switcher-wrap">
+      <button class="lang-toggle-btn active" id="btn-lang-id" onclick="setLanguage('id')">ID</button>
+      <button class="lang-toggle-btn" id="btn-lang-en" onclick="setLanguage('en')">EN</button>
+    </div>
+  </div>
+
+  <!-- LEGENDA AREA KIRI BAWAH (DINAMIS SINKRON DENGAN FILTER MODE) -->
+  <div class="map-legend-bottom-left hidden" id="map-legend-bottom-left">
+    <div class="legend-title" id="legend-title-text">Legenda Luas Areal</div>
+    <div class="legend-items-wrap" id="legend-items-container">
+      <!-- Diinjeksi dinamis -->
+    </div>
+  </div>
+
+  <!-- SISI KANAN: DOKUMENTASI AWAL -->
+  <div class="magazine-story-right" id="editorial-right">
+    <span class="mag-tag" id="txt-right-tag">Kedaulatan & Hilirisasi Industri</span>
+    <h2 class="mag-title" id="txt-right-title">Serapan Domestik<br>& Ekspor Bernilai Tambah</h2>
+    <p class="mag-quote" id="txt-right-quote">
+      "Kebutuhan domestik kini menyerap 24,77 juta ton kelapa sawit—lebih dari separuhnya dialokasikan bagi kemandirian bioenergi nasional (51,29%), diikuti pangan (39,70%) dan oleokimia (9,01%)."
+    </p>
+    <p class="mag-body" id="txt-right-body">
+      Dari total ekspor manufaktur olahan sebesar 85,12% (27,54 juta ton), pasar utama dipimpin Tiongkok (15,17%), India (12,59%), dan Pakistan (12,07%).
+    </p>
+    <div class="mag-meta" id="txt-right-meta">
+      Sumber Data: Sekretariat Satgas Sawit Bappenas • Ditjenbun • BPS • GAPKI (Update Nov 2026)
+    </div>
+  </div>
+
+  <!-- PANEL KIRI: DETAIL POLIGON / DAERAH (SLIDE DARI KIRI) -->
+  <aside class="sidebar-panel-left" id="sidebar-panel-left">
+    <div class="sidebar-header">
+      <div class="top-tag-row">
+        <span class="tag" id="sb-level-tag">Analisis Agraria & Lahan</span>
+        <button class="close-btn" onclick="resetView()">✕</button>
+      </div>
+      <h2 id="sb-title">-</h2>
+      <p class="sub" id="sb-sub">-</p>
+    </div>
+
+    <div class="scroll-body" id="sb-content">
+      <!-- Diinjeksi dinamis -->
+    </div>
+  </aside>
+
+  <!-- WADAH FLOATING CARDS KANAN (FROSTED GLASS) -->
+  <div class="floating-cards-container" id="floating-cards-container">
+    <!-- Diinjeksi kartu-kartu widget modular -->
+  </div>
+
+  <!-- NARASI STORYTELLING KANAN BAWAH (RATA KANAN & TANPA BACKGROUND CARD) -->
+  <div class="bottom-storytelling-narrative" id="bottom-storytelling-narrative">
+    <span class="bottom-story-kicker" id="bottom-story-kicker">Spatial Insights</span>
+    <p class="bottom-story-text" id="bottom-story-text">-</p>
+  </div>
+
+  <!-- KANVAS PETA -->
+  <div id="map"></div>
+
+  <script>
+    var currentLang = 'id';
+
+    var I18N = {
+      id: {
+        leftKicker: "Satgas Sawit Nasional • Bappenas",
+        leftTitle: "Tata Kelola & Neraca<br>Kelapa Sawit RI",
+        leftLead: "Komoditas strategis nasional dalam angka dan fakta. Menghubungkan bentang tutupan kebun 16,83 juta hektar, serapan domestik mandiri energi, hingga penetapan harga tandan buah segar (TBS) plasma di tingkat tapak.",
+        statArea: "Hektar Kebun (2024)",
+        statProd: "Ton Minyak Sawit (2025)",
+        statExport: "Devisa Ekspor HS 1511",
+        leftNote: "Elevasi balok 3D dan panel analisis otomatis bertransisi mengikuti tombol filter yang aktif di atas: <strong>Luas Areal (Agraria)</strong> atau <strong>TBS Plasma (Tata Niaga)</strong>.",
+        rightTag: "Kedaulatan & Hilirisasi Industri",
+        rightTitle: "Serapan Domestik<br>& Ekspor Bernilai Tambah",
+        rightQuote: '"Kebutuhan domestik kini menyerap 24,77 juta ton kelapa sawit—lebih dari separuhnya dialokasikan bagi kemandirian bioenergi nasional (51,29%), diikuti pangan (39,70%) dan oleokimia (9,01%)."',
+        rightBody: "Dari total ekspor manufaktur olahan sebesar 85,12% (27,54 juta ton), pasar utama dipimpin Tiongkok (15,17%), India (12,59%), dan Pakistan (12,07%).",
+        rightMeta: "Sumber Data: Sekretariat Satgas Sawit Bappenas • Ditjenbun • BPS • GAPKI (Update Nov 2026)",
+        modeAreal: "Visual Luas Areal (Ha)",
+        modeTbs: "Penetapan TBS Plasma (Rp/Kg)",
+        btnActionHilirisasi: "Buka Hilirisasi & Neraca Produksi ↗",
+        btnActionPasar: "Buka Bursa Pasar Global & Tarif Ekspor ↗",
+        listHeaderAreal: "Daftar Provinsi:",
+        listHeaderTbs: "Peringkat Penetapan Dinas:",
+        structureTitle: "Struktur Kepemilikan Lahan",
+        smallholders: "Perkebunan Rakyat",
+        corporate: "Korporasi Swasta",
+        stateLad: "Negara & LAD*",
+        verification: "Status Verifikasi",
+        ladNote: "*LAD (Luas Akan Dikonfirmasi): Diskrepansi antara pencatatan administrasi Pemda dan batas citra satelit yang statusnya sedang diverifikasi Satgas.",
+        islandCover: "TUTUPAN PULAU",
+        tbsIslandTitle: "HARGA TBS",
+        avgIsland: "Rata-rata Pulau",
+        highest: "Tertinggi di Pulau",
+        lowest: "Terendah di Pulau",
+        btnBackIsland: "← Kembali ke Ringkasan Pulau",
+        btnBackTbs: "← Kembali ke Daftar TBS",
+        storyKicker: "Spatial Insights",
+        // Floating Card Pilar 06 (Bahasa Indonesia)
+        pilar6Title: "Pilar 06 • Pungutan Ekspor (Okt 2026)",
+        pilar6Hr: "Harga Referensi (HR)",
+        pilar6Bk: "Bea Keluar (BK)",
+        pilar6Pe: "Pungutan Ekspor (12.5%)",
+        pilar6Total: "Total Beban",
+        // Floating Card Pilar 04 (Bahasa Indonesia)
+        pilar4Title: "Pilar 04 • Ekspor Kode HS Terbesar",
+        thHs: "HS Code",
+        thProduct: "Produk",
+        thFob: "FOB (USD)",
+        // Floating Card Pilar 05, 02, 03, 08 (Bahasa Indonesia)
+        pilar5Title: "Pilar 05 • Acuan Harga CPO Bursa Dunia",
+        pilar2Title: "Pilar 02 • Produksi Sawit",
+        pilar3Title: "Pilar 03 • Serapan Domestik (24,77 Jt Ton)",
+        pilar8Title: "Pilar 08 • Katalog Hilirisasi 4 Sektor",
+        thYear: "Tahun",
+        prodGrowthNote: "↗ Produksi 2025: +7,18% (+3,79 juta ton) dibanding 2024.",
+        secFood: "Oleopangan",
+        secChem: "Oleokimia",
+        secBio: "Bioenergi",
+        secBioMass: "Biomassa Sirkular",
+        // Legenda
+        legendArealTitle: "Legenda Luas Areal (Ha)",
+        legendArealHigh: "Dominan (>50% Pangsa)",
+        legendArealMid: "Besar (20% - 50%)",
+        legendArealLow: "Berkembang (1% - 20%)",
+        legendArealMinimal: "Minimalis (<1%)",
+        legendTbsTitle: "Legenda TBS Plasma (Rp/Kg)",
+        legendTbsHigh: "Tinggi (≥ Rp 3.600/kg)",
+        legendTbsMid: "Menengah (Rp 3.200 - 3.599)",
+        legendTbsLow: "Dasar (< Rp 3.200/kg)"
+      },
+      en: {
+        leftKicker: "National Palm Oil Taskforce • Bappenas",
+        leftTitle: "Governance & Balance<br>Indonesian Palm Oil",
+        leftLead: "A national strategic commodity in numbers and facts. Connecting 16.83 million hectares of plantations, domestic energy self-sufficiency, and official smallholder FFB prices.",
+        statArea: "Planted Area (2024)",
+        statProd: "Palm Oil Output (2025)",
+        statExport: "Export Value HS 1511",
+        leftNote: "3D extrusion heights and analytical panels adapt dynamically according to the active toggle: <strong>Planted Area (Agrarian)</strong> or <strong>FFB Price (Trade & Market)</strong>.",
+        rightTag: "Sovereignty & Industrial Downstreaming",
+        rightTitle: "Domestic Absorption<br>& Value-Added Exports",
+        rightQuote: '"Domestic consumption now absorbs 24.77 million tonnes of palm oil—over half allocated to national bioenergy security (51.29%), followed by food (39.70%) and oleochemicals (9.01%)."',
+        rightBody: "Of total manufactured exports of 85.12% (27.54 million tonnes), top destinations include China (15.17%), India (12.59%), and Pakistan (12.07%).",
+        rightMeta: "Data Source: Palm Oil Task Force Secretariat Bappenas • Ditjenbun • BPS • GAPKI (Nov 2026)",
+        modeAreal: "Planted Area Extrusion (Ha)",
+        modeTbs: "Plasma FFB Pricing (IDR/Kg)",
+        btnActionHilirisasi: "Open Downstream & Production Balance ↗",
+        btnActionPasar: "Open Global Exchanges & Export Tariffs ↗",
+        listHeaderAreal: "Province Directory:",
+        listHeaderTbs: "Official Pricing Ranking:",
+        structureTitle: "Land Ownership Structure",
+        smallholders: "Smallholders",
+        corporate: "Private Corporates",
+        stateLad: "State & LAD*",
+        verification: "Verification Status",
+        ladNote: "*LAD (Area to be Confirmed): Discrepancies between local administration reports and satellite imagery currently being verified by the Task Force.",
+        islandCover: "PLANTED COVERAGE",
+        tbsIslandTitle: "FFB PRICING",
+        avgIsland: "Regional Average",
+        highest: "Highest in Region",
+        lowest: "Lowest in Region",
+        btnBackIsland: "← Back to Island Summary",
+        btnBackTbs: "← Back to Regional FFB List",
+        storyKicker: "Spatial Insights",
+        // Floating Card Pilar 06 (English)
+        pilar6Title: "Pillar 06 • Export Tariffs (Oct 2026)",
+        pilar6Hr: "Reference Price (RP)",
+        pilar6Bk: "Export Duty",
+        pilar6Pe: "Export Levy (12.5%)",
+        pilar6Total: "Total Tariff Load",
+        // Floating Card Pilar 04 (English)
+        pilar4Title: "Pillar 04 • Major HS Export Codes",
+        thHs: "HS Code",
+        thProduct: "Product",
+        thFob: "FOB (USD)",
+        // Floating Card Pilar 05, 02, 03, 08 (English)
+        pilar5Title: "Pillar 05 • Global CPO Benchmark Prices",
+        pilar2Title: "Pillar 02 • Production Balance",
+        pilar3Title: "Pillar 03 • Domestic Absorption (24.77 M Tonnes)",
+        pilar8Title: "Pillar 08 • 4 Downstream Sectors",
+        thYear: "Year",
+        prodGrowthNote: "↗ 2025 Output: +7.18% (+3.79 million tonnes) vs 2024.",
+        secFood: "Edible Oils",
+        secChem: "Oleochemicals",
+        secBio: "Bioenergy",
+        secBioMass: "Circular Biomass",
+        // Legenda
+        legendArealTitle: "Planted Area Legend (Ha)",
+        legendArealHigh: "Dominant (>50% Share)",
+        legendArealMid: "Major (20% - 50%)",
+        legendArealLow: "Developing (1% - 20%)",
+        legendArealMinimal: "Minimal (<1%)",
+        legendTbsTitle: "Plasma FFB Pricing Legend (IDR/Kg)",
+        legendTbsHigh: "High (≥ IDR 3,600/kg)",
+        legendTbsMid: "Medium (IDR 3,200 - 3,599)",
+        legendTbsLow: "Base (< IDR 3,200/kg)"
+      }
+    };
+
+    var DATA_SAWIT = {
+      nasional: {
+        luas_hektar: 16830000,
+        sumber_luas: "Ditjenbun Kementan 2024",
+        produksi_historis: [
+          { tahun: "2023", total: 54.84, cpo: 50.07, pko: 4.77 },
+          { tahun: "2024", total: 52.76, cpo: 48.16, pko: 4.60 },
+          { tahun: "2025", total: 56.55, cpo: 51.66, pko: 4.89 }
+        ],
+        konsumsi_total: 24.77,
+        bioenergi: { pct: 51.29, vol: 12.70 },
+        pangan: { pct: 39.70, vol: 9.83 },
+        oleokimia: { pct: 9.01, vol: 2.23 },
+        hilirisasi: {
+          id: {
+            oleopangan: ["Minyak goreng curah & kemasan", "Margarin olesan kue", "Shortening roti & pastry", "Krimer nabati minuman"],
+            oleokimia: ["Sabun pembersih tubuh", "Sampo perawatan rambut", "Kosmetik & emulsifier", "Deterjen pembersih pakaian"],
+            bioenergi: ["Biodiesel bauran BBM (B35/B40)", "Green diesel (HVO)", "Bioavtur bahan bakar pesawat", "Biogas energi limbah cair PKS"],
+            biomassa: ["Bahan bakar boiler (Cangkang)", "Biopelet (Tandan kosong sawit)", "Pulp & kertas serat tandan", "Pakan ternak bungkil inti sawit (PKE)"]
+          },
+          en: {
+            oleopangan: ["Refined cooking oils", "Baking margarine", "Bakery shortening", "Non-dairy food creamers"],
+            oleokimia: ["Personal care soap bars", "Shampoo & hair care", "Cosmetics & skin emulsifiers", "Laundry detergents"],
+            bioenergi: ["Biodiesel fuel mandate (B35/B40)", "Hydrotreated vegetable oil (HVO)", "Sustainable aviation fuel (SAF)", "Biogas from mill effluent (POME)"],
+            biomassa: ["Industrial boiler fuel (Palm shell)", "Pelletized empty fruit bunches", "Pulp & paper fiberboard", "Palm kernel expeller (PKE animal feed)"]
+          }
+        },
+        ekspor: {
+          hs_detail: [
+            { hs: "15111000", nama_id: "CPO Mentah", nama_en: "Crude Palm Oil (CPO)", val: 743.86 },
+            { hs: "15119020", nama_id: "Minyak Sawit Dimurnikan", nama_en: "RBD Palm Oil", val: 2174.13 },
+            { hs: "15119031", nama_id: "Fraksi Padat (iodine 30-<40)", nama_en: "Solid Fraction / Stearin", val: 736.61 },
+            { hs: "15119037", nama_id: "Fraksi Cair (iodine 55-<60)", nama_en: "Liquid Fraction / Olein", val: 4246.11 },
+            { hs: "15119039", nama_id: "Fraksi Cair Lainnya", nama_en: "Other Liquid Fractions", val: 48.14 }
+          ]
+        },
+        bursa_global: {
+          cpo: [
+            { pasar: "Rotterdam (CIF Forward)", harga: 1555.00, per: "5 Nov 2026", src: "Bappebti" },
+            { pasar: "Bursa Malaysia Derivatives (BMD)", harga: 1116.34, per: "4 Nov 2026", src: "MPOC" },
+            { pasar: "SEA of India", harga: 1250.00, per: "16 Okt 2026", src: "SEA India" },
+            { pasar: "ICDX Indonesia", harga: 895.45, per: "5 Nov 2026", src: "Bappebti" },
+            { pasar: "KPBN Dumai", harga: 859.38, per: "30 Okt 2026", src: "KPBN Inacom" }
+          ]
+        },
+        tarif_oktober_2026: {
+          hr_cpo: 1042.15,
+          bea_keluar: 178,
+          pungutan_ekspor_pct: 12.5,
+          pungutan_ekspor_usd: 130.27
+        }
+      },
+      regional: {
+        "SUMATERA": {
+          luas: 10201658,
+          pct_nasional: 60.60,
+          warga_ha: 5090000, warga_pct: 49.90,
+          swasta_ha: 3220000, swasta_pct: 31.60,
+          negara_lad_ha: 1890000, negara_lad_pct: 18.50,
+          coords: [101.5, 0.5],
+          palmTreesCount: 18,
+          stories: {
+            id_areal: "Sumatera adalah episentrum sawit Indonesia dengan 10,2 juta hektar (60,6% nasional). Hampir separuhnya (49,9%) dikelola langsung oleh kebun rakyat mandiri, menjadikannya penopang ekonomi keluarga petani terkuat di nusantara.",
+            en_areal: "Sumatra is the epicenter of Indonesian palm oil, covering 10.2 million hectares (60.6% nationally). Nearly half (49.9%) is held directly by independent smallholders, serving as the primary economic backbone for farming communities.",
+            id_tbs: "Harga TBS plasma di Sumatera menunjukkan persaingan sehat antar-PKS dengan Sumatera Barat dan Riau mencatatkan harga tertinggi mendekati Rp 4.000/kg, didorong oleh efisiensi logistik pelabuhan Dumai dan Teluk Bayur.",
+            en_tbs: "Sumatra's plasma FFB prices reflect robust competitiveness, with West Sumatra and Riau recording top rates near IDR 4,000/kg, heavily supported by port logistics at Dumai and Teluk Bayur."
+          },
+          tbs: [
+            { prov: "Sumatera Barat", harga: 3966.94, rentang: null, periode: "Oktober 2026", disbun: "Disbun TPH Sumbar" },
+            { prov: "Riau", harga: 3912.29, rentang: null, periode: "30 Sep – 6 Okt 2026", disbun: "Disbun Riau" },
+            { prov: "Sumatera Utara", harga: 3801.58, rentang: null, periode: "30 Sep – 6 Okt 2026", disbun: "Disbun & Peternakan Sumut" },
+            { prov: "Jambi", harga: 3758.31, rentang: null, periode: "2–8 Okt 2026", disbun: "Disbun Jambi" },
+            { prov: "Sumatera Selatan", harga: 3785.00, rentang: "Rp3.720,00 – 3.850,00", periode: "Reguler 2026", disbun: "Disbun Sumsel" },
+            { prov: "Bengkulu", harga: 3430.55, rentang: null, periode: "1–15 Okt 2026", disbun: "Dinas TPHP Bengkulu" },
+            { prov: "Aceh", harga: 3250.00, rentang: "Rp3.150,00 – 3.350,00", periode: "Reguler 2026", disbun: "Distanbun Aceh" },
+            { prov: "Lampung", harga: 3425.00, rentang: "Rp3.350,00 – 3.500,00", periode: "Reguler 2026", disbun: "Disbun Lampung" },
+            { prov: "Bangka Belitung", harga: 3325.00, rentang: "Rp3.250,00 – 3.400,00", periode: "Reguler 2026", disbun: "Dinas Pertanian Babel" }
+          ]
+        },
+        "KALIMANTAN": {
+          luas: 5982568,
+          pct_nasional: 35.54,
+          warga_ha: 1490000, warga_pct: 22.90,
+          swasta_ha: 4970000, swasta_pct: 76.30,
+          negara_lad_ha: 53000, negara_lad_pct: 0.80,
+          coords: [114.0, -0.5],
+          palmTreesCount: 14,
+          stories: {
+            id_areal: "Bentang kebun sawit di Kalimantan mencapai 5,98 juta hektar (35,5% nasional) dengan dominasi korporasi swasta sebesar 76,3%. Tata kelola di wilayah ini difokuskan pada penguatan koridor konservasi dan legalitas HGU.",
+            en_areal: "Kalimantan encompasses 5.98 million hectares of oil palm (35.5% nationally), characterized by private corporate estates (76.3%). Governance prioritizes ecological corridors, sustainable ISPO compliance, and boundary verification.",
+            id_tbs: "Di Kalimantan, penetapan harga TBS cukup merata di kisaran Rp 3.400–3.627/kg. Kalbar dan Kaltim memimpin berkat utilisasi pabrik fraksinasi modern yang terhubung langsung ke rantai pasok biodiesel nasional.",
+            en_tbs: "Kalimantan maintains uniform FFB pricing between IDR 3,400–3,627/kg. West and East Kalimantan lead due to modern fractionation mills directly fueling the national biodiesel mandate."
+          },
+          tbs: [
+            { prov: "Kalimantan Barat", harga: 3627.97, rentang: null, periode: "Sep – Okt 2026", disbun: "Disbunnak Kalbar" },
+            { prov: "Kalimantan Timur", harga: 3617.55, rentang: null, periode: "Sep – Okt 2026", disbun: "Disbun Kaltim" },
+            { prov: "Kalimantan Tengah", harga: 3525.00, rentang: "Rp3.450,00 – 3.600,00", periode: "Reguler 2026", disbun: "Disbun Kalteng" },
+            { prov: "Kalimantan Utara", harga: 3485.88, rentang: null, periode: "Oktober 2026", disbun: "Distan & KP Kaltara" },
+            { prov: "Kalimantan Selatan", harga: 3475.00, rentang: "Rp3.400,00 – 3.550,00", periode: "Reguler 2026", disbun: "Disbun Kalsel" }
+          ]
+        },
+        "SULAWESI": {
+          luas: 390008,
+          pct_nasional: 2.32,
+          warga_ha: 239000, warga_pct: 55.50,
+          swasta_ha: 180200, swasta_pct: 41.90,
+          negara_lad_ha: 11200, negara_lad_pct: 2.60,
+          coords: [121.5, -2.0],
+          palmTreesCount: 4,
+          stories: {
+            id_areal: "Sulawesi menyumbang 390 ribu hektar kebun dengan porsi kebun rakyat yang dominan (55,5%), menjadi motor pemerataan ekonomi agribisnis di kawasan Indonesia Tengah.",
+            en_areal: "Sulawesi accounts for 390 thousand hectares with predominant smallholder ownership (55.5%), acting as a vital catalyst for rural agricultural prosperity in Central Indonesia.",
+            id_tbs: "Harga TBS di Sulawesi bergerak stabil pada kisaran Rp 3.050–3.225/kg. Kemitraan plasma terus diperluas untuk memperpendek jarak angkut TBS petani menuju PKS pengolah.",
+            en_tbs: "FFB pricing in Sulawesi remains stable around IDR 3,050–3,225/kg. Partnership expansions focus on shortening farmer transportation radii to processing mills."
+          },
+          tbs: [
+            { prov: "Sulawesi Barat", harga: 3225.00, rentang: "Rp3.150,00 – 3.300,00", periode: "Reguler 2026", disbun: "Disbun Sulbar" },
+            { prov: "Sulawesi Tengah", harga: 3175.00, rentang: "Rp3.100,00 – 3.250,00", periode: "Reguler 2026", disbun: "Disbun Sulteng" },
+            { prov: "Sulawesi Selatan", harga: 3125.00, rentang: "Rp3.050,00 – 3.200,00", periode: "Reguler 2026", disbun: "Disbun Sulsel" }
+          ]
+        },
+        "PAPUA": {
+          luas: 208285,
+          pct_nasional: 1.24,
+          warga_ha: 48500, warga_pct: 20.70,
+          swasta_ha: 186300, swasta_pct: 79.30,
+          negara_lad_ha: 0, negara_lad_pct: 0.0,
+          coords: [137.5, -4.0],
+          palmTreesCount: 3,
+          stories: {
+            id_areal: "Papua mencakup 208 ribu hektar areal kelapa sawit yang didorong dengan prinsip perlindungan hutan primer bernilai konservasi tinggi (HCV) serta keterlibatan masyarakat adat.",
+            en_areal: "Papua spans 208 thousand hectares under strict preservation covenants for High Conservation Value (HCV) primary rainforests and indigenous community inclusion.",
+            id_tbs: "Tantangan logistik dan jarak antarpulau menjadikan penetapan harga TBS plasma di Papua berkisar Rp 2.850–3.239/kg, diimbangi dengan pembangunan infrastruktur hilir lokal.",
+            en_tbs: "Logistical archipelago dynamics position Papua's plasma FFB between IDR 2,850–3,239/kg, actively bridged by local infrastructure and mill integrations."
+          },
+          tbs: [
+            { prov: "Papua Barat", harga: 3239.64, rentang: null, periode: "Sep – Okt 2026", disbun: "Dinas TPHP Papua Barat" },
+            { prov: "Papua (Induk)", harga: 2950.00, rentang: "Rp2.850,00 – 3.050,00", periode: "Reguler 2026", disbun: "Rekap Plasma Papua" }
+          ]
+        },
+        "JAWA": {
+          luas: 32020, pct_nasional: 0.19, warga_ha: 7020, warga_pct: 20.60, swasta_ha: 5810, swasta_pct: 17.10, negara_lad_ha: 21200, negara_lad_pct: 62.30, coords: [110.0, -7.2], palmTreesCount: 0,
+          stories: { id_areal: "Jawa memiliki tutupan kebun sawit minimalis (32 ribu hektar), namun berperan sebagai pusat kilang hilirisasi industri oleopangan dan pelabuhan konsumen terbesar.", en_areal: "Java holds minimal plantations (32k ha), yet serves as the country's primary downstream refining, oleofood packaging, and consumer gateway." },
+          tbs: []
+        },
+        "MALUKU": {
+          luas: 19446, pct_nasional: 0.12, warga_ha: 802, warga_pct: 5.10, swasta_ha: 14900, swasta_pct: 94.90, negara_lad_ha: 0, negara_lad_pct: 0.0, coords: [128.5, -3.2], palmTreesCount: 0,
+          stories: { id_areal: "Kepulauan Maluku memiliki tutupan 19,4 ribu hektar yang dikelola secara selektif dengan fokus pada ketahanan pasokan industri pangan kepulauan.", en_areal: "The Maluku islands hold 19.4k hectares selectively dedicated to regional edible oil self-sufficiency." },
+          tbs: []
+        }
+      }
+    };
+
+    var currentVisualMode = 'home';
+    var selectedIslandKey = null;
+    var selectedProvinceName = null;
+    var rawGeoJSON = null;
+    var hoveredProvName = null;
+
+    var map = new maplibregl.Map({
+      container: 'map',
+      style: { version: 8, sources: {}, layers: [] },
+      center: [118.0, 3.2], // Diturunkan lebih dekat footer di mode Home
+      zoom: 4.35,
+      pitch: 0,
+      maxPitch: 55,
+      minPitch: 0,
+      bearing: 0,
+      antialias: true
+    });
+
+    function generatePalmIcon() {
+      var img = new Image(24, 24);
+      var svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2d6a4f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M13 8c0-2.76-2.46-5-5.5-5S2 5.24 2 8h11z"/>
+        <path d="M13 7.14A5.82 5.82 0 0 1 16.5 6c3.04 0 5.5 2.24 5.5 5h-9"/>
+        <path d="M5.89 13.5c1.47-1.74 3.7-2.5 6.11-2.5 3.04 0 5.5 1.5 6 3"/>
+        <path d="M12 11v10"/>
+      </svg>`;
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+      img.onload = function() {
+        if (!map.hasImage('palm-tree-icon')) map.addImage('palm-tree-icon', img);
+      };
+    }
+
+    map.on('load', function() {
+      generatePalmIcon();
+
+      map.setLight({
+        anchor: 'viewport',
+        color: '#ffffff',
+        intensity: 0.85,
+        position: [1.5, 210, 45]
+      });
+
+      map.addSource('islands-extrusion-src', {
+        type: 'geojson',
+        data: { type: "FeatureCollection", features: [] }
+      });
+
+      map.addSource('drilldown-polygons-src', {
+        type: 'geojson',
+        data: { type: "FeatureCollection", features: [] }
+      });
+
+      map.addLayer({
+        id: 'islands-extrusion-layer',
+        type: 'fill-extrusion',
+        source: 'islands-extrusion-src',
+        paint: {
+          'fill-extrusion-color': ['get', 'polyColor'],
+          'fill-extrusion-height': ['get', 'extrudeHeight'],
+          'fill-extrusion-base': 0,
+          'fill-extrusion-opacity': 0.94
+        }
+      });
+
+      map.addSource('palm-trees-src', {
+        type: 'geojson',
+        data: { type: "FeatureCollection", features: [] }
+      });
+
+      map.addLayer({
+        id: 'palm-trees-layer',
+        type: 'symbol',
+        source: 'palm-trees-src',
+        layout: {
+          'icon-image': 'palm-tree-icon',
+          'icon-size': 0.85,
+          'icon-allow-overlap': true,
+          'visibility': 'visible'
+        },
+        paint: { 'icon-opacity': 0.75 }
+      });
+
+      map.addLayer({
+        id: 'drilldown-polygons-layer',
+        type: 'fill-extrusion',
+        source: 'drilldown-polygons-src',
+        paint: {
+          'fill-extrusion-color': [
+            'case',
+            ['==', ['get', 'provName'], hoveredProvName || ''],
+            '#f59e0b', // Glowing Kuning Emas
+            ['get', 'polyColor']
+          ],
+          'fill-extrusion-height': [
+            'case',
+            ['==', ['get', 'provName'], hoveredProvName || ''],
+            ['+', ['get', 'extrudeHeight'], 8000],
+            ['get', 'extrudeHeight']
+          ],
+          'fill-extrusion-base': 0,
+          'fill-extrusion-opacity': 0.96
+        }
+      });
+
+      fetch('https://raw.githubusercontent.com/TheMaggieSimpson/IndonesiaGeoJSON/master/provinsi.json')
+        .then(res => res.json())
+        .then(data => {
+          rawGeoJSON = data;
+          generateHomePalmTrees();
+          renderMacroIslandFeatures();
+
+          map.on('click', 'islands-extrusion-layer', function(e) {
+            if (currentVisualMode === 'home') return;
+            if (!e.features.length) return;
+            drilldownToIsland(e.features[0].properties.islandKey);
+          });
+
+          map.on('click', 'drilldown-polygons-layer', function(e) {
+            if (currentVisualMode === 'home') return;
+            if (!e.features.length) return;
+            drilldownToProvinceDetail(e.features[0].properties.islandKey, e.features[0].properties.provName);
+          });
+
+          map.on('mousemove', 'drilldown-polygons-layer', function(e) {
+            if (currentVisualMode === 'home') return;
+            if (e.features.length > 0) {
+              setHoveredProvince(e.features[0].properties.provName);
+            }
+          });
+
+          map.on('mouseleave', 'drilldown-polygons-layer', function() {
+            setHoveredProvince(null);
+          });
+        });
+    });
+
+    // Generator Pohon Sawit Khusus Mode Home
+    function generateHomePalmTrees() {
+      if (!rawGeoJSON) return;
+      var treeFeatures = [];
+
+      Object.keys(DATA_SAWIT.regional).forEach(islandKey => {
+        var count = DATA_SAWIT.regional[islandKey].palmTreesCount;
+        if (count === 0) return;
+
+        var subFeats = rawGeoJSON.features.filter(f => {
+          var rawName = (f.properties.Propinsi || f.properties.NAME_1 || f.properties.name || "");
+          return getIslandKeyFromProv(rawName) === islandKey;
+        });
+
+        if (!subFeats.length) return;
+        var combined = turf.featureCollection(subFeats);
+        var bbox = turf.bbox(combined);
+
+        var generated = 0;
+        var attempts = 0;
+        while (generated < count && attempts < 100) {
+          attempts++;
+          var rndLng = bbox[0] + Math.random() * (bbox[2] - bbox[0]);
+          var rndLat = bbox[1] + Math.random() * (bbox[3] - bbox[1]);
+          var pt = turf.point([rndLng, rndLat]);
+
+          for (var i = 0; i < subFeats.length; i++) {
+            if (turf.booleanPointInPolygon(pt, subFeats[i])) {
+              treeFeatures.push(pt);
+              generated++;
+              break;
+            }
+          }
+        }
+      });
+
+      map.getSource('palm-trees-src').setData({ type: "FeatureCollection", features: treeFeatures });
+    }
+
+    // Set Hover Glowing Kuning Emas
+    function setHoveredProvince(provName) {
+      hoveredProvName = provName;
+
+      if (map.getLayer('drilldown-polygons-layer')) {
+        map.setPaintProperty('drilldown-polygons-layer', 'fill-extrusion-color', [
+          'case',
+          ['==', ['get', 'provName'], hoveredProvName || ''],
+          '#f59e0b',
+          ['get', 'polyColor']
+        ]);
+        map.setPaintProperty('drilldown-polygons-layer', 'fill-extrusion-height', [
+          'case',
+          ['==', ['get', 'provName'], hoveredProvName || ''],
+          ['+', ['get', 'extrudeHeight'], 8000],
+          ['get', 'extrudeHeight']
+        ]);
+      }
+
+      document.querySelectorAll('.item-interactive-card').forEach(card => {
+        if (provName && card.dataset.prov === provName) {
+          card.classList.add('glowing');
+        } else {
+          card.classList.remove('glowing');
+        }
+      });
+    }
+
+    function getIslandKeyFromProv(rawName) {
+      var n = rawName.toUpperCase();
+      if (n.includes("ACEH") || n.includes("SUMATERA") || n.includes("RIAU") || n.includes("JAMBI") || n.includes("BENGKULU") || n.includes("LAMPUNG") || n.includes("BANGKA")) return "SUMATERA";
+      if (n.includes("KALIMANTAN")) return "KALIMANTAN";
+      if (n.includes("SULAWESI") || n.includes("GORONTALO")) return "SULAWESI";
+      if (n.includes("PAPUA")) return "PAPUA";
+      if (n.includes("JAWA") || n.includes("JAKARTA") || n.includes("BANTEN") || n.includes("YOGYAKARTA")) return "JAWA";
+      if (n.includes("MALUKU")) return "MALUKU";
+      return null;
+    }
+
+    // ========================================================
+    // UPDATE LEGENDA DI KIRI BAWAH
+    // ========================================================
+    function updateBottomLeftLegend() {
+      var legendEl = document.getElementById('map-legend-bottom-left');
+      var titleEl = document.getElementById('legend-title-text');
+      var containerEl = document.getElementById('legend-items-container');
+      var t = I18N[currentLang];
+
+      if (currentVisualMode === 'home') {
+        legendEl.classList.add('hidden');
+        return;
+      }
+
+      legendEl.classList.remove('hidden');
+
+      if (currentVisualMode === 'areal') {
+        titleEl.innerText = t.legendArealTitle;
+        containerEl.innerHTML = `
+          <div class="legend-item-row"><div class="legend-swatch" style="background:#1b4332;"></div><span>${t.legendArealHigh}</span></div>
+          <div class="legend-item-row"><div class="legend-swatch" style="background:#2d6a4f;"></div><span>${t.legendArealMid}</span></div>
+          <div class="legend-item-row"><div class="legend-swatch" style="background:#8c532b;"></div><span>${t.legendArealLow}</span></div>
+          <div class="legend-item-row"><div class="legend-swatch" style="background:#bfa588;"></div><span>${t.legendArealMinimal}</span></div>
+        `;
+      } else {
+        titleEl.innerText = t.legendTbsTitle;
+        containerEl.innerHTML = `
+          <div class="legend-item-row"><div class="legend-swatch" style="background:#2d6a4f;"></div><span>${t.legendTbsHigh}</span></div>
+          <div class="legend-item-row"><div class="legend-swatch" style="background:#b45309;"></div><span>${t.legendTbsMid}</span></div>
+          <div class="legend-item-row"><div class="legend-swatch" style="background:#8c532b;"></div><span>${t.legendTbsLow}</span></div>
+        `;
+      }
+    }
+
+    function renderMacroIslandFeatures() {
+      if (!rawGeoJSON) return;
+      var islandFeatures = [];
+
+      rawGeoJSON.features.forEach(feat => {
+        var rawName = (feat.properties.Propinsi || feat.properties.NAME_1 || feat.properties.name || "");
+        var islandKey = getIslandKeyFromProv(rawName);
+        if (!islandKey || !DATA_SAWIT.regional[islandKey]) return;
+
+        var reg = DATA_SAWIT.regional[islandKey];
+        var calcHeight = 0;
+        var color = '#ffffff';
+
+        if (currentVisualMode === 'home') {
+          calcHeight = 0;
+          color = '#ffffff';
+        } else if (currentVisualMode === 'areal') {
+          calcHeight = reg.luas * 0.005;
+          if (reg.pct_nasional > 50) color = '#1b4332';
+          else if (reg.pct_nasional > 20) color = '#2d6a4f';
+          else if (reg.pct_nasional > 1) color = '#8c532b';
+          else color = '#bfa588';
+        } else if (currentVisualMode === 'tbs') {
+          var avgTbs = reg.tbs.length ? (reg.tbs.reduce((a,b)=>a+b.harga, 0)/reg.tbs.length) : 0;
+          calcHeight = avgTbs * 15;
+          color = avgTbs > 3600 ? '#2d6a4f' : (avgTbs > 3200 ? '#b45309' : '#8c532b');
+        }
+
+        var cloneFeat = JSON.parse(JSON.stringify(feat));
+        cloneFeat.properties.islandKey = islandKey;
+        cloneFeat.properties.extrudeHeight = calcHeight;
+        cloneFeat.properties.polyColor = color;
+        islandFeatures.push(cloneFeat);
+      });
+
+      map.getSource('islands-extrusion-src').setData({
+        type: "FeatureCollection",
+        features: islandFeatures
+      });
+      map.getSource('drilldown-polygons-src').setData({ type: "FeatureCollection", features: [] });
+
+      if (map.getLayer('palm-trees-layer')) {
+        map.setLayoutProperty('palm-trees-layer', 'visibility', currentVisualMode === 'home' ? 'visible' : 'none');
+      }
+
+      updateBottomLeftLegend();
+    }
+
+    // ========================================================
+    // DRILLDOWN POLIGON DENGAN STORYTELLING KANAN BAWAH
+    // ========================================================
+    function drilldownToIsland(islandKey) {
+      if (currentVisualMode === 'home') return;
+      selectedIslandKey = islandKey;
+      selectedProvinceName = null;
+      var reg = DATA_SAWIT.regional[islandKey];
+      if (!reg) return;
+
+      document.getElementById('top-center-cluster').classList.add('hidden');
+      document.getElementById('map-legend-bottom-left').classList.add('hidden');
+      document.getElementById('editorial-left').classList.add('hidden');
+      document.getElementById('editorial-right').classList.add('hidden');
+
+      var islandSubFeatures = rawGeoJSON.features.filter(f => {
+        var rawName = (f.properties.Propinsi || f.properties.NAME_1 || f.properties.name || "");
+        return getIslandKeyFromProv(rawName) === islandKey;
+      });
+
+      var drillFeatures = [];
+      islandSubFeatures.forEach(feat => {
+        var rawName = (feat.properties.Propinsi || feat.properties.NAME_1 || feat.properties.name || "").toUpperCase();
+        var tbsItem = reg.tbs.find(t => rawName.includes(t.prov.toUpperCase())) || { harga: 3000, prov: rawName };
+
+        var h = 0;
+        var col = '#d6cfc4';
+
+        if (currentVisualMode === 'areal') {
+          h = (reg.luas / Math.max(islandSubFeatures.length, 1)) * 0.005;
+          col = '#2d6a4f';
+        } else {
+          h = tbsItem.harga * 15;
+          col = tbsItem.harga >= 3800 ? '#1b4332' : (tbsItem.harga >= 3500 ? '#2d6a4f' : '#8c532b');
+        }
+
+        var cFeat = JSON.parse(JSON.stringify(feat));
+        cFeat.properties.islandKey = islandKey;
+        cFeat.properties.provName = tbsItem.prov;
+        cFeat.properties.extrudeHeight = h;
+        cFeat.properties.polyColor = col;
+        drillFeatures.push(cFeat);
+      });
+
+      map.getSource('islands-extrusion-src').setData({ type: "FeatureCollection", features: [] });
+      map.getSource('drilldown-polygons-src').setData({
+        type: "FeatureCollection",
+        features: drillFeatures
+      });
+
+      map.flyTo({
+        center: [reg.coords[0] - 0.6, reg.coords[1]],
+        zoom: islandKey === "SUMATERA" ? 5.6 : 6.0,
+        pitch: 52,
+        duration: 1200
+      });
+
+      renderSidebarIsland(islandKey);
+      renderRightBottomStory(islandKey);
+    }
+
+    // Tampilkan Storytelling Narasi di Kanan Bawah (Rata Kanan, Tanpa Card)
+    function renderRightBottomStory(islandKey, provName) {
+      var reg = DATA_SAWIT.regional[islandKey];
+      var container = document.getElementById('bottom-storytelling-narrative');
+      var textEl = document.getElementById('bottom-story-text');
+      var kickerEl = document.getElementById('bottom-story-kicker');
+
+      if (!reg || !reg.stories) {
+        container.classList.remove('open');
+        return;
+      }
+
+      kickerEl.innerText = I18N[currentLang].storyKicker + " • " + (provName ? provName : islandKey);
+
+      var storyKey = currentLang + "_" + (currentVisualMode === 'areal' ? 'areal' : 'tbs');
+      var storyText = reg.stories[storyKey] || reg.stories[currentLang + '_areal'];
+
+      if (provName) {
+        var tbsItem = reg.tbs.find(t => t.prov.toUpperCase() === provName.toUpperCase());
+        if (currentLang === 'id') {
+          storyText = `Provinsi ${provName} beroperasi dengan penetapan harga TBS plasma resmi Rp ${tbsItem ? tbsItem.harga.toLocaleString('id-ID') : '-'} per kg oleh ${tbsItem ? tbsItem.disbun : 'Disbun'}. Menghubungkan pasokan tandan buah segar petani langsung ke jaringan pabrik kelapa sawit mitra.`;
+        } else {
+          storyText = `Province of ${provName} operates under official plasma FFB price of IDR ${tbsItem ? tbsItem.harga.toLocaleString('id-ID') : '-'} per kg determined by ${tbsItem ? tbsItem.disbun : 'the Plantation Board'}, connecting smallholder crop yields directly to partner processing mills.`;
+        }
+      }
+
+      textEl.innerText = storyText;
+      container.classList.add('open');
+    }
+
+    // ========================================================
+    // PANEL KIRI: TOMBOL DI ATAS DAFTAR PROVINSI
+    // ========================================================
+    function renderSidebarIsland(islandKey) {
+      var reg = DATA_SAWIT.regional[islandKey];
+      var contentEl = document.getElementById('sb-content');
+      var t = I18N[currentLang];
+
+      if (currentVisualMode === 'areal') {
+        document.getElementById('sb-level-tag').innerText = currentLang === 'id' ? "Tata Guna Lahan & Agraria • Pulau" : "Land Coverage & Agrarian • Regional";
+        document.getElementById('sb-title').innerText = t.islandCover + " " + islandKey;
+        document.getElementById('sb-sub').innerText = `Total: ${(reg.luas/1000000).toFixed(2)} Jt Ha (${reg.pct_nasional}% ${currentLang==='id'?'Nasional':'National'})`;
+
+        contentEl.innerHTML = `
+          <div class="metric-card">
+            <div class="metric-card-title">
+              <span>${t.structureTitle}</span>
+              <span>2024</span>
+            </div>
+            <div class="metric-grid">
+              <div class="m-item">
+                <span class="lbl">${t.smallholders}</span>
+                <span class="val">${(reg.warga_ha/1000000).toFixed(2)} Jt Ha <small style="color:#2d6a4f;">(${reg.warga_pct}%)</small></span>
+              </div>
+              <div class="m-item">
+                <span class="lbl">${t.corporate}</span>
+                <span class="val">${(reg.swasta_ha/1000000).toFixed(2)} Jt Ha <small style="color:#8c532b;">(${reg.swasta_pct}%)</small></span>
+              </div>
+              <div class="m-item">
+                <span class="lbl">${t.stateLad}</span>
+                <span class="val">${reg.negara_lad_ha ? (reg.negara_lad_ha/1000).toFixed(1) + ' Rb Ha' : '-'} <small style="color:#78716c;">(${reg.negara_lad_pct}%)</small></span>
+              </div>
+              <div class="m-item">
+                <span class="lbl">${t.verification}</span>
+                <span class="val" style="font-size:11px;">Ditjenbun & Satelit</span>
+              </div>
+            </div>
+            <div style="font-size:9.5px; color:#78716c; margin-top:10px; line-height:1.4;">
+              ${t.ladNote}
+            </div>
+          </div>
+
+          <!-- TOMBOL AKSI MAKRO DI ATAS DAFTAR PROVINSI -->
+          <button class="btn-macro-action" onclick="toggleFloatingHilirisasi()" style="background:#2d6a4f;">
+            ${t.btnActionHilirisasi}
+          </button>
+
+          <!-- DAFTAR PROVINSI BERSIH -->
+          <div style="font-size:11px; font-weight:800; color:#2d6a4f; text-transform:uppercase; letter-spacing:0.5px; margin-top:4px;">
+            ${t.listHeaderAreal}
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            ${reg.tbs.map(item => `
+              <div class="item-interactive-card" 
+                   data-prov="${item.prov}"
+                   onmouseenter="setHoveredProvince('${item.prov}')" 
+                   onmouseleave="setHoveredProvince(null)"
+                   onclick="drilldownToProvinceDetail('${islandKey}', '${item.prov}')">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <strong style="color:#1c1917; font-size:13px;">${item.prov}</strong>
+                </div>
+                <div style="font-size:10.5px; color:#78716c; margin-top:3px;">${currentLang==='id'?'Mitra Pabrik (PKS)':'Mill Partner'}: ${item.disbun}</div>
+              </div>
+            `).join('') || '<div style="color:#78716c; font-size:12px;">Data batas terintegrasi.</div>'}
+          </div>
+        `;
+      } else {
+        document.getElementById('sb-level-tag').innerText = currentLang === 'id' ? "Tata Niaga & Harga TBS Plasma • Pulau" : "Trade & Plasma FFB Price • Regional";
+        document.getElementById('sb-title').innerText = t.tbsIslandTitle + " " + islandKey;
+        var avgPrice = reg.tbs.length ? (reg.tbs.reduce((a,b)=>a+b.harga, 0)/reg.tbs.length) : 0;
+        document.getElementById('sb-sub').innerText = `${t.avgIsland}: Rp ${avgPrice.toLocaleString('id-ID', {maximumFractionDigits:0})}/kg`;
+
+        var sortedTbs = [...reg.tbs].sort((a,b) => b.harga - a.harga);
+        var tbsCards = sortedTbs.map((item, idx) => `
+          <div class="item-interactive-card" 
+               data-prov="${item.prov}"
+               onmouseenter="setHoveredProvince('${item.prov}')" 
+               onmouseleave="setHoveredProvince(null)"
+               onclick="drilldownToProvinceDetail('${islandKey}', '${item.prov}')">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <span style="font-size:10px; font-weight:900; color:#8c532b; margin-right:4px;">#${idx+1}</span>
+                <strong style="color:#1c1917; font-size:13px;">${item.prov}</strong>
+              </div>
+              <span style="color:#2d6a4f; font-weight:900; font-size:14px;">Rp ${item.harga.toLocaleString('id-ID')}/kg</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:10px; color:#78716c; margin-top:4px;">
+              <span>${item.disbun}</span>
+              <span style="font-weight:700;">${item.rentang ? item.rentang : item.periode}</span>
+            </div>
+          </div>
+        `).join('');
+
+        contentEl.innerHTML = `
+          <div class="metric-card">
+            <div class="metric-card-title">
+              <span>${currentLang==='id'?'Indikator Pasar & Disparitas TBS':'Market & Disparity Indicators'}</span>
+              <span>Okt–Nov 2026</span>
+            </div>
+            <div class="metric-grid">
+              <div class="m-item">
+                <span class="lbl">${t.highest}</span>
+                <span class="val" style="color:#2d6a4f;">${sortedTbs[0] ? 'Rp ' + sortedTbs[0].harga.toLocaleString('id-ID') : '-'}</span>
+              </div>
+              <div class="m-item">
+                <span class="lbl">${t.lowest}</span>
+                <span class="val" style="color:#8c532b;">${sortedTbs[sortedTbs.length-1] ? 'Rp ' + sortedTbs[sortedTbs.length-1].harga.toLocaleString('id-ID') : '-'}</span>
+              </div>
+              <div class="m-item">
+                <span class="lbl">KPBN Dumai</span>
+                <span class="val">$859,38 <small style="color:#78716c;">(FOB)</small></span>
+              </div>
+              <div class="m-item">
+                <span class="lbl">Bursa ICDX RI</span>
+                <span class="val">$895,45 / ton</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- TOMBOL AKSI MAKRO DI ATAS DAFTAR PERINGKAT -->
+          <button class="btn-macro-action" onclick="toggleFloatingPasar()" style="background:#8c532b;">
+            ${t.btnActionPasar}
+          </button>
+
+          <!-- DAFTAR PERINGKAT BERSIH -->
+          <div style="font-size:11px; font-weight:800; color:#2d6a4f; text-transform:uppercase; letter-spacing:0.5px; margin-top:4px;">
+            ${t.listHeaderTbs}
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            ${tbsCards || '<div style="color:#78716c; font-size:12px;">Tidak ada kemitraan tercatat.</div>'}
+          </div>
+        `;
+      }
+
+      document.getElementById('sidebar-panel-left').classList.add('open');
+    }
+
+    function drilldownToProvinceDetail(islandKey, provName) {
+      selectedProvinceName = provName;
+      var reg = DATA_SAWIT.regional[islandKey];
+      var tbs = reg.tbs.find(t => t.prov.toUpperCase() === provName.toUpperCase()) || reg.tbs[0];
+      var contentEl = document.getElementById('sb-content');
+      var t = I18N[currentLang];
+
+      setHoveredProvince(provName);
+
+      if (currentVisualMode === 'areal') {
+        document.getElementById('sb-level-tag').innerText = currentLang === 'id' ? "Agraria Daerah • Tingkat Provinsi" : "Agrarian Profile • Provincial Level";
+        document.getElementById('sb-title').innerText = tbs ? tbs.prov : provName;
+        document.getElementById('sb-sub').innerText = `${currentLang==='id'?'Wilayah Operasional':'Operational Zone'} ${islandKey}`;
+
+        contentEl.innerHTML = `
+          <div class="metric-card" style="border-color:#2d6a4f;">
+            <div class="metric-card-title">
+              <span>${currentLang==='id'?'Status Operasional Perkebunan':'Plantation Operational Status'}</span>
+              <span style="color:#2d6a4f;">${currentLang==='id'?'Terdata':'Verified'}</span>
+            </div>
+            <div style="font-size:12px; color:#44403c; line-height:1.6; margin-bottom:10px;">
+              ${currentLang==='id'?'Unit perkebunan kemitraan rakyat dan HGU korporasi aktif menyuplai TBS ke pabrik kelapa sawit (PKS) terdekat di wilayah ini.':'Smallholder partnerships and corporate estates actively supply Fresh Fruit Bunches (FFB) to nearby processing mills.'}
+            </div>
+            <div class="metric-grid">
+              <div class="m-item">
+                <span class="lbl">${currentLang==='id'?'Fokus Ekstraksi':'Extraction Focus'}</span>
+                <span class="val">CPO & Inti Sawit (PKO)</span>
+              </div>
+              <div class="m-item">
+                <span class="lbl">${currentLang==='id'?'Basis Verifikasi':'Database Source'}</span>
+                <span class="val">SIPASBUN Kementan</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-card-title">${currentLang==='id'?'Pemanfaatan Hasil Lahan':'Regional Output Utilization'}</div>
+            <div style="display:flex; flex-direction:column; gap:6px; font-size:11.5px; color:#44403c;">
+              <div>🍳 <strong>${currentLang==='id'?'Minyak Pangan':'Edible Oils'}:</strong> ${currentLang==='id'?'Suplai minyak curah & industri margarin.':'Bulk cooking oil & food manufacturing.'}</div>
+              <div>⚡ <strong>${currentLang==='id'?'Bahan Biodiesel':'Bioenergy'}:</strong> ${currentLang==='id'?'Pasokan program mandiri energi B35/B40.':'Feedstock for B35/B40 mandate.'}</div>
+              <div>🪵 <strong>${currentLang==='id'?'Cangkang Sawit':'Palm Shell'}:</strong> ${currentLang==='id'?'Bahan bakar boiler ramah lingkungan.':'Eco-friendly boiler biofuel.'}</div>
+              <div>🐮 <strong>${currentLang==='id'?'Bungkil PKE':'Palm Kernel Expeller'}:</strong> ${currentLang==='id'?'Bahan baku konsentrat pakan ternak.':'High-protein livestock feed.'}</div>
+            </div>
+          </div>
+
+          <button onclick="drilldownToIsland('${islandKey}')" style="width:100%; padding:10px; background:transparent; color:#57534e; border:1px solid rgba(214, 207, 196, 0.8); border-radius:8px; cursor:pointer; font-size:11px; font-weight:800; margin-top:6px;">
+            ${t.btnBackIsland} ${islandKey}
+          </button>
+        `;
+      } else {
+        document.getElementById('sb-level-tag').innerText = currentLang === 'id' ? "Tata Niaga • Penetapan Resmi Disbun" : "Trade • Official Board Determination";
+        document.getElementById('sb-title').innerText = tbs ? tbs.prov : provName;
+        document.getElementById('sb-sub').innerText = `${currentLang==='id'?'Penetapan Resmi Dinas':'Official Determination'} (${tbs ? tbs.periode : '-'})`;
+
+        contentEl.innerHTML = `
+          <div class="metric-card" style="border-color:#2d6a4f;">
+            <div class="metric-card-title">
+              <span>${currentLang==='id'?'Harga TBS Plasma':'Plasma FFB Price'}</span>
+              <span style="color:#2d6a4f; font-weight:900;">${currentLang==='id'?'Berlaku':'Active'}</span>
+            </div>
+            <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:8px;">
+              <div style="font-size:32px; font-weight:900; color:#1c1917;">Rp ${tbs ? tbs.harga.toLocaleString('id-ID') : '-'}<span style="font-size:12px; color:#78716c; font-weight:normal;"> / kg</span></div>
+              <span style="font-size:11px; background:rgba(232, 245, 233, 0.75); color:#2d6a4f; border:1px solid #2d6a4f; padding:2px 8px; border-radius:4px; font-weight:800;">Plasma</span>
+            </div>
+            <div style="font-size:11.5px; color:#44403c; line-height:1.5;">
+              ${currentLang==='id'?'Ditetapkan oleh':'Determined by'}: <strong>${tbs ? tbs.disbun : '-'}</strong> (${currentLang==='id'?'Pedoman Permentan 13/2024':'Regulation 13/2024'}).
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-card-title">${currentLang==='id'?'Korelasi Acuan Tarif Ekspor':'Export Tariff Benchmark'}</div>
+            <div class="metric-grid">
+              <div class="m-item">
+                <span class="lbl">${t.pilar6Hr}</span>
+                <span class="val">$${DATA_SAWIT.nasional.tarif_oktober_2026.hr_cpo} / ton</span>
+              </div>
+              <div class="m-item">
+                <span class="lbl">${t.pilar6Bk}</span>
+                <span class="val">$${DATA_SAWIT.nasional.tarif_oktober_2026.bea_keluar} / ton</span>
+              </div>
+              <div class="m-item">
+                <span class="lbl">${t.pilar6Pe}</span>
+                <span class="val">${DATA_SAWIT.nasional.tarif_oktober_2026.pungutan_ekspor_pct}% ($${DATA_SAWIT.nasional.tarif_oktober_2026.pungutan_ekspor_usd})</span>
+              </div>
+              <div class="m-item">
+                <span class="lbl">${currentLang==='id'?'Dasar Regulasi':'Regulation'}</span>
+                <span class="val" style="font-size:11px;">PMK 69/2025 jo. 9/2026</span>
+              </div>
+            </div>
+          </div>
+
+          <button onclick="drilldownToIsland('${islandKey}')" style="width:100%; padding:10px; background:transparent; color:#57534e; border:1px solid rgba(214, 207, 196, 0.8); border-radius:8px; cursor:pointer; font-size:11px; font-weight:800; margin-top:6px;">
+            ${t.btnBackTbs} ${islandKey}
+          </button>
+        `;
+      }
+
+      renderRightBottomStory(islandKey, provName);
+    }
+
+    // ========================================================
+    // KARTU FLOATING KANAN: HILIRISASI (BILINGUAL)
+    // ========================================================
+    function toggleFloatingHilirisasi() {
+      var container = document.getElementById('floating-cards-container');
+      if (container.classList.contains('open') && container.dataset.type === 'hilirisasi') {
+        container.classList.remove('open');
+        return;
+      }
+
+      var n = DATA_SAWIT.nasional;
+      var t = I18N[currentLang];
+      var hilir = n.hilirisasi[currentLang];
+
+      var prodRows = n.produksi_historis.map(p => `
+        <tr style="border-bottom:1px solid rgba(231, 226, 216, 0.8); font-size:11px;">
+          <td style="padding:5px; font-weight:800; color:#2d6a4f;">${p.tahun}</td>
+          <td style="padding:5px; text-align:right;">${p.cpo} Jt T</td>
+          <td style="padding:5px; text-align:right;">${p.pko} Jt T</td>
+          <td style="padding:5px; text-align:right; font-weight:bold; color:#1c1917;">${p.total} Jt T</td>
+        </tr>
+      `).join('');
+
+      container.dataset.type = 'hilirisasi';
+      container.innerHTML = `
+        <div class="floating-widget-card">
+          <div class="floating-card-header">
+            <span class="kicker">${t.pilar2Title}</span>
+            <button class="floating-card-close" onclick="closeFloatingCards()">✕</button>
+          </div>
+          <table style="width:100%; border-collapse:collapse; margin-bottom:6px;">
+            <thead>
+              <tr style="border-bottom:1px solid rgba(214, 207, 196, 0.8); font-size:9.5px; color:#78716c; text-transform:uppercase; text-align:left;">
+                <th style="padding:5px;">${t.thYear}</th>
+                <th style="padding:5px; text-align:right;">CPO</th>
+                <th style="padding:5px; text-align:right;">PKO</th>
+                <th style="padding:5px; text-align:right;">Total</th>
+              </tr>
+            </thead>
+            <tbody>${prodRows}</tbody>
+          </table>
+          <div style="font-size:10px; color:#2d6a4f; font-weight:700;">
+            ${t.prodGrowthNote}
+          </div>
+        </div>
+
+        <div class="floating-widget-card">
+          <div class="floating-card-header">
+            <span class="kicker">${t.pilar3Title}</span>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; text-align:center;">
+            <div style="background:rgba(232, 245, 233, 0.7); border:1px solid rgba(165, 214, 167, 0.8); padding:6px 2px; border-radius:6px;">
+              <div style="font-size:15px; font-weight:900; color:#2d6a4f;">${n.bioenergi.pct}%</div>
+              <div style="font-size:8.5px; color:#57534e; text-transform:uppercase; font-weight:700;">${currentLang==='id'?'Bioenergi':'Bioenergy'} (${n.bioenergi.vol} Jt)</div>
+            </div>
+            <div style="background:rgba(254, 243, 199, 0.7); border:1px solid rgba(253, 230, 138, 0.8); padding:6px 2px; border-radius:6px;">
+              <div style="font-size:15px; font-weight:900; color:#b45309;">${n.pangan.pct}%</div>
+              <div style="font-size:8.5px; color:#57534e; text-transform:uppercase; font-weight:700;">${currentLang==='id'?'Pangan':'Food'} (${n.pangan.vol} Jt)</div>
+            </div>
+            <div style="background:rgba(237, 233, 254, 0.7); border:1px solid rgba(221, 214, 254, 0.8); padding:6px 2px; border-radius:6px;">
+              <div style="font-size:15px; font-weight:900; color:#6d28d9;">${n.oleokimia.pct}%</div>
+              <div style="font-size:8.5px; color:#57534e; text-transform:uppercase; font-weight:700;">${currentLang==='id'?'Oleokimia':'Oleochem'} (${n.oleokimia.vol} Jt)</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="floating-widget-card">
+          <div class="floating-card-header">
+            <span class="kicker">${t.pilar8Title}</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px; font-size:11px;">
+            <div>
+              <strong style="color:#b45309;">🍳 ${t.secFood}:</strong>
+              <div style="color:#57534e; font-size:10px;">${hilir.oleopangan.join(" • ")}</div>
+            </div>
+            <div>
+              <strong style="color:#6d28d9;">🧴 ${t.secChem}:</strong>
+              <div style="color:#57534e; font-size:10px;">${hilir.oleokimia.join(" • ")}</div>
+            </div>
+            <div>
+              <strong style="color:#2d6a4f;">⚡ ${t.secBio}:</strong>
+              <div style="color:#57534e; font-size:10px;">${hilir.bioenergi.join(" • ")}</div>
+            </div>
+            <div>
+              <strong style="color:#8c532b;">🪵 ${t.secBioMass}:</strong>
+              <div style="color:#57534e; font-size:10px;">${hilir.biomassa.join(" • ")}</div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      container.classList.add('open');
+    }
+
+    // ========================================================
+    // KARTU FLOATING KANAN: PASAR GLOBAL & TARIF (BILINGUAL)
+    // ========================================================
+    function toggleFloatingPasar() {
+      var container = document.getElementById('floating-cards-container');
+      if (container.classList.contains('open') && container.dataset.type === 'pasar') {
+        container.classList.remove('open');
+        return;
+      }
+
+      var n = DATA_SAWIT.nasional;
+      var t = I18N[currentLang];
+
+      var cpoBursaRows = n.bursa_global.cpo.map(b => `
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(231, 226, 216, 0.8); padding:4px 0; font-size:11px;">
+          <div>
+            <strong style="color:#1c1917;">${b.pasar}</strong>
+            <div style="font-size:9px; color:#78716c;">${b.src} • ${b.per}</div>
+          </div>
+          <span style="font-weight:900; color:#8c532b; font-size:12px;">$${b.harga.toLocaleString('en-US', {minimumFractionDigits:2})}</span>
+        </div>
+      `).join('');
+
+      var hsRows = n.ekspor.hs_detail.map(h => `
+        <tr style="border-bottom:1px solid rgba(231, 226, 216, 0.8); font-size:10px;">
+          <td style="padding:4px; font-family:monospace; color:#2d6a4f; font-weight:700;">${h.hs}</td>
+          <td style="padding:4px; color:#1c1917;">${currentLang === 'id' ? h.nama_id : h.nama_en}</td>
+          <td style="padding:4px; text-align:right; font-weight:bold; color:#8c532b;">$${h.val.toFixed(0)} Jt</td>
+        </tr>
+      `).join('');
+
+      container.dataset.type = 'pasar';
+      container.innerHTML = `
+        <div class="floating-widget-card">
+          <div class="floating-card-header">
+            <span class="kicker">${t.pilar5Title}</span>
+            <button class="floating-card-close" onclick="closeFloatingCards()">✕</button>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:2px;">${cpoBursaRows}</div>
+        </div>
+
+        <div class="floating-widget-card">
+          <div class="floating-card-header">
+            <span class="kicker">${t.pilar6Title}</span>
+          </div>
+          <div class="metric-grid">
+            <div class="m-item">
+              <span class="lbl">${t.pilar6Hr}</span>
+              <span class="val" style="font-size:12.5px;">$1.042,15 / ton</span>
+            </div>
+            <div class="m-item">
+              <span class="lbl">${t.pilar6Bk}</span>
+              <span class="val" style="font-size:12.5px;">$178,00 / ton</span>
+            </div>
+            <div class="m-item">
+              <span class="lbl">${t.pilar6Pe}</span>
+              <span class="val" style="font-size:12.5px;">$130,27 / ton</span>
+            </div>
+            <div class="m-item">
+              <span class="lbl">${t.pilar6Total}</span>
+              <span class="val" style="font-size:12.5px; color:#8c532b;">$308,27 / ton</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="floating-widget-card">
+          <div class="floating-card-header">
+            <span class="kicker">${t.pilar4Title}</span>
+          </div>
+          <table style="width:100%; border-collapse:collapse;">
+            <thead>
+              <tr style="border-bottom:1px solid rgba(214, 207, 196, 0.8); font-size:9px; color:#78716c; text-transform:uppercase; text-align:left;">
+                <th style="padding:4px;">${t.thHs}</th>
+                <th style="padding:4px;">${t.thProduct}</th>
+                <th style="padding:4px; text-align:right;">${t.thFob}</th>
+              </tr>
+            </thead>
+            <tbody>${hsRows}</tbody>
+          </table>
+        </div>
+      `;
+
+      container.classList.add('open');
+    }
+
+    function closeFloatingCards() {
+      document.getElementById('floating-cards-container').classList.remove('open');
+    }
+
+    // ========================================================
+    // PENGALIH MODE FILTER: HOME (2D PUTIH + SAWIT) VS AREAL/TBS
+    // ========================================================
+    function setVisualMode(mode) {
+      currentVisualMode = mode;
+      document.getElementById('btn-mode-home').classList.toggle('active', mode === 'home');
+      document.getElementById('btn-mode-areal').classList.toggle('active', mode === 'areal');
+      document.getElementById('btn-mode-tbs').classList.toggle('active', mode === 'tbs');
+
+      closeFloatingCards();
+      setHoveredProvince(null);
+      document.getElementById('bottom-storytelling-narrative').classList.remove('open');
+
+      if (mode === 'home') {
+        selectedIslandKey = null;
+        selectedProvinceName = null;
+        document.getElementById('sidebar-panel-left').classList.remove('open');
+        document.getElementById('editorial-left').classList.remove('hidden');
+        document.getElementById('editorial-right').classList.remove('hidden');
+
+        // Peta Home diturunkan lagi ke koordinat center [118.0, 3.2]
+        map.easeTo({
+          center: [118.0, 3.2],
+          zoom: 4.35,
+          pitch: 0,
+          bearing: 0,
+          duration: 1000
+        });
+
+        renderMacroIslandFeatures();
+      } else {
+        map.easeTo({
+          center: [118.0, -2.5],
+          pitch: 52,
+          bearing: -10,
+          duration: 1000
+        });
+
+        if (selectedIslandKey) {
+          if (selectedProvinceName) {
+            drilldownToProvinceDetail(selectedIslandKey, selectedProvinceName);
+          } else {
+            drilldownToIsland(selectedIslandKey);
+          }
+        } else {
+          renderMacroIslandFeatures();
+        }
+      }
+
+      updateBottomLeftLegend();
+    }
+
+    function resetView() {
+      selectedIslandKey = null;
+      selectedProvinceName = null;
+      setHoveredProvince(null);
+
+      document.getElementById('top-center-cluster').classList.remove('hidden');
+      document.getElementById('sidebar-panel-left').classList.remove('open');
+      document.getElementById('bottom-storytelling-narrative').classList.remove('open');
+      closeFloatingCards();
+      document.getElementById('editorial-left').classList.remove('hidden');
+      document.getElementById('editorial-right').classList.remove('hidden');
+
+      renderMacroIslandFeatures();
+
+      map.flyTo({
+        center: currentVisualMode === 'home' ? [118.0, 3.2] : [118.0, -2.5],
+        zoom: currentVisualMode === 'home' ? 4.35 : 4.4,
+        pitch: currentVisualMode === 'home' ? 0 : 52,
+        bearing: currentVisualMode === 'home' ? 0 : -10,
+        duration: 1200
+      });
+
+      updateBottomLeftLegend();
+    }
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      document.getElementById('btn-lang-id').classList.toggle('active', lang === 'id');
+      document.getElementById('btn-lang-en').classList.toggle('active', lang === 'en');
+
+      var t = I18N[lang];
+      document.getElementById('txt-left-kicker').innerText = t.leftKicker;
+      document.getElementById('txt-left-title').innerHTML = t.leftTitle;
+      document.getElementById('txt-left-lead').innerText = t.leftLead;
+      document.getElementById('txt-stat-area').innerText = t.statArea;
+      document.getElementById('txt-stat-prod').innerText = t.statProd;
+      document.getElementById('txt-stat-export').innerText = t.statExport;
+      document.getElementById('txt-left-note').innerHTML = t.leftNote;
+
+      document.getElementById('txt-right-tag').innerText = t.rightTag;
+      document.getElementById('txt-right-title').innerHTML = t.rightTitle;
+      document.getElementById('txt-right-quote').innerText = t.rightQuote;
+      document.getElementById('txt-right-body').innerText = t.rightBody;
+      document.getElementById('txt-right-meta').innerText = t.rightMeta;
+
+      document.getElementById('btn-mode-areal').innerText = t.modeAreal;
+      document.getElementById('btn-mode-tbs').innerText = t.modeTbs;
+
+      updateBottomLeftLegend();
+
+      if (selectedIslandKey) {
+        if (selectedProvinceName) {
+          drilldownToProvinceDetail(selectedIslandKey, selectedProvinceName);
+        } else {
+          renderSidebarIsland(selectedIslandKey);
+          renderRightBottomStory(selectedIslandKey);
+        }
+      }
+
+      var floatContainer = document.getElementById('floating-cards-container');
+      if (floatContainer.classList.contains('open')) {
+        if (floatContainer.dataset.type === 'hilirisasi') toggleFloatingHilirisasi();
+        if (floatContainer.dataset.type === 'pasar') toggleFloatingPasar();
+      }
+    }
+  </script>
+</body>
+</html>
